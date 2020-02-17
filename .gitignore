@@ -1,3 +1,8 @@
-terraform/terraform.tfvars
+terraform/gcp/terraform.tfvars
 tezos-baker/kustomization.yaml
 tezos-baker/loadbalancerpatch.yaml
+terraform/aws/terraform.tfvars
+terraform/aws/output/kubeconfig
+terraform/aws/terraform.tfstate*
+terraform/aws/.terraform
+

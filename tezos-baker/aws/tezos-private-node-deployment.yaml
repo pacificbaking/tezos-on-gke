@@ -1,0 +1,211 @@
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: standard-gp2
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp2
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tezos-private-node-claim
+spec:
+  storageClassName: standard-gp2
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 90Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tezos-private-client-claim
+spec:
+  storageClassName: standard-gp2
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tezos-private-node-rpc
+spec:
+  ports:
+  - port: 8732
+  selector:
+    app: tezos-private-baking-node
+  clusterIP: None
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tezos-private-baking-node-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: tezos-private-baking-node
+  policyTypes:
+  - Ingress
+  - Egress
+  egress:
+  - ports:
+    - port: 80
+      protocol: TCP
+    - port: 443
+      protocol: TCP
+    - port: 53
+      protocol: TCP
+    - port: 53
+      protocol: UDP
+  - ports:
+    - port: 8445
+      protocol: TCP
+    to:
+    - podSelector:
+        matchLabels:
+          app: tezos-remote-signer-forwarder
+  - ports:
+    - port: 9732
+      protocol: TCP
+    to:
+    - podSelector:
+        matchLabels:
+          app: tezos-public-node
+  ingress:
+  - ports:
+    - port: 53
+      protocol: TCP
+    - port: 53
+      protocol: UDP
+  - ports:
+    - port: 9732
+      protocol: TCP
+    from:
+    - podSelector:
+        matchLabels:
+          app: tezos-public-node
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tezos-private-baking-node
+spec:
+  selector:
+    matchLabels:
+      app: tezos-private-baking-node
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: tezos-private-baking-node
+    spec:
+      securityContext:
+        fsGroup: 100
+      containers:
+      - name: tezos-private-node
+        image: tezos/tezos
+        args: [ "tezos-node", "--private-mode", "--peer", "tezos-public-node-0.tezos-public-node", "--peer", "tezos-public-node-1.tezos-public-node", "--connections", "2", "--rpc-addr", "0.0.0.0:8732" ]
+        ports:
+        - containerPort: 9732
+          name: tezos-port
+        - containerPort: 8732
+          name: tezos-rpc-port
+        volumeMounts:
+        - name: tezos-private-node-storage
+          mountPath: /var/run/tezos/node
+        resources:
+          limits:
+            cpu: 0
+      - name: tezos-prometheus-exporter
+        image: ecadlabs/tezos_exporter
+        args: [ "-tezos-node-url", "http://localhost:8732/" ]
+        ports:
+        - containerPort: 9489
+          name: prom-exporter
+        resources:
+          limits:
+            cpu: 0
+      - name: tezos-endorser-with-remote-signer
+        image: tezos-endorser-with-remote-signer
+        args: [ "k8s-baker" ]
+        volumeMounts:
+        - name: tezos-private-node-storage
+          readOnly: true
+          mountPath: /var/run/tezos/node
+        - name: tezos-private-client-storage
+          mountPath: /var/run/tezos/client
+        envFrom:
+        - configMapRef:
+            name: tezos-configmap
+        resources:
+          limits:
+            cpu: 0
+      - name: tezos-accuser
+        image: tezos/tezos
+        args: [ "tezos-accuser" ]
+        env:
+        - name: NODE_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: tezos-configmap
+              key: NODE_HOST
+        - name: PROTOCOL
+          valueFrom:
+            configMapKeyRef:
+              name: tezos-configmap
+              key: PROTOCOL
+        volumeMounts:
+        - name: tezos-private-client-storage
+          readOnly: true
+          mountPath: /var/run/tezos/client
+        resources:
+          limits:
+            cpu: 0
+      - name: tezos-baker-with-remote-signer
+        image: tezos-baker-with-remote-signer
+        args: [ "k8s-baker" ]
+        volumeMounts:
+        - name: tezos-private-node-storage
+          readOnly: true
+          mountPath: /var/run/tezos/node
+        - name: tezos-private-client-storage
+          mountPath: /var/run/tezos/client
+        envFrom:
+        - configMapRef:
+            name: tezos-configmap
+        resources:
+          limits:
+            cpu: 0
+      initContainers:
+      - name: tezos-snapshot-downloader
+        image: tezos-snapshot-downloader
+        args:
+        - "$(FULL_SNAPSHOT_URL)"
+        env:
+        - name: FULL_SNAPSHOT_URL
+          valueFrom:
+            configMapKeyRef:
+              name: tezos-configmap
+              key: FULL_SNAPSHOT_URL
+        resources:
+          limits:
+            cpu: 0
+        volumeMounts:
+        - name: tezos-private-node-storage
+          mountPath: /var/run/tezos/node
+      volumes:
+      - name: tezos-private-client-storage
+        persistentVolumeClaim:
+          claimName: tezos-private-client-claim
+      - name: tezos-private-node-storage
+        persistentVolumeClaim:
+          claimName: tezos-private-node-claim

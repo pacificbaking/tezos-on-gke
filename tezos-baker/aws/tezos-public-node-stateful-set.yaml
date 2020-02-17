@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tezos-public-node
+spec:
+  ports:
+  - port: 9732
+  selector:
+    app: tezos-public-node
+  clusterIP: None
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tezos-public-node-rpc
+spec:
+  ports:
+  - port: 8732
+  selector:
+    app: tezos-public-node
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: tezos-public-node
+spec:
+  selector:
+    matchLabels:
+      app: tezos-public-node # Label selector that determines which Pods belong to the StatefulSet
+                 # Must match spec: template: metadata: labels
+  serviceName: "tezos-public-node"
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: tezos-public-node # Pod template's label selector
+    spec:
+      securityContext:
+        fsGroup: 100
+      containers:
+      - name: tezos-public-node
+        image: tezos/tezos-public
+        args: [ "tezos-node", "--history-mode", "experimental-rolling" ]
+        ports:
+        - containerPort: 9732
+          name: tezos-port
+        volumeMounts:
+        - name: tezos-public-node-pv-claim
+          mountPath: /var/run/tezos/node
+        resources:
+          limits:
+            cpu: 0
+      initContainers:
+      - name: tezos-snapshot-downloader
+        image: tezos-snapshot-downloader
+        args:
+        - "$(ROLLING_SNAPSHOT_URL)"
+        env:
+        - name: ROLLING_SNAPSHOT_URL
+          valueFrom:
+            configMapKeyRef:
+              name: tezos-configmap
+              key: ROLLING_SNAPSHOT_URL
+        volumeMounts:
+        - name: tezos-public-node-pv-claim
+          mountPath: /var/run/tezos/node
+  volumeClaimTemplates:
+  - metadata:
+      name: tezos-public-node-pv-claim
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: standard-gp2
+      resources:
+        requests:
+          storage: 30Gi
