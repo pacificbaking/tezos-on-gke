@@ -24,7 +24,7 @@ find ${path.module}/../../docker -mindepth 1 -type d  -printf '%f\n'| while read
   cp Dockerfile.template Dockerfile
   sed -i "s/((tezos_sentry_version))/${var.tezos_sentry_version}/" Dockerfile
   sed -i "s/((tezos_private_version))/${var.tezos_private_version}/" Dockerfile
-  tag="${var.aws-account-id}.dkr.ecr.us-west-2.amazonaws.com/$container:latest"
+  tag="${var.aws-account-id}.dkr.ecr.us-west-2.amazonaws.com/$container:${var.container_version}"
   docker build -t $tag .
   docker push $tag
   rm -v Dockerfile
@@ -57,28 +57,28 @@ imageTags:
     newTag: ${var.tezos_sentry_version}
   - name: tezos-baker-with-remote-signer
     newName: ${var.aws-account-id}.dkr.ecr.us-west-2.amazonaws.com/tezos-baker-with-remote-signer
-    newTag: latest
+    newTag: ${var.container_version}
   - name: tezos-endorser-with-remote-signer
     newName: ${var.aws-account-id}.dkr.ecr.us-west-2.amazonaws.com/tezos-endorser-with-remote-signer
-    newTag: latest
+    newTag: ${var.container_version}
   - name: tezos-remote-signer-forwarder
     newName: ${var.aws-account-id}.dkr.ecr.us-west-2.amazonaws.com/tezos-remote-signer-forwarder
-    newTag: latest
+    newTag: ${var.container_version}
   - name: tezos-remote-signer-loadbalancer
     newName: ${var.aws-account-id}.dkr.ecr.us-west-2.amazonaws.com/tezos-remote-signer-loadbalancer
-    newTag: latest
+    newTag: ${var.container_version}
   - name: tezos-snapshot-downloader
     newName: ${var.aws-account-id}.dkr.ecr.us-west-2.amazonaws.com/tezos-snapshot-downloader
-    newTag: latest
+    newTag: ${var.container_version}
   - name: tezos-archive-downloader
     newName: ${var.aws-account-id}.dkr.ecr.us-west-2.amazonaws.com/tezos-archive-downloader
-    newTag: latest
+    newTag: ${var.container_version}
   - name: tezos-key-importer
     newName: ${var.aws-account-id}.dkr.ecr.us-west-2.amazonaws.com/tezos-key-importer
-    newTag: latest
+    newTag: ${var.container_version}
   - name: tezos-private-node-connectivity-checker
     newName: ${var.aws-account-id}.dkr.ecr.us-west-2.amazonaws.com/tezos-private-node-connectivity-checker
-    newTag: latest
+    newTag: ${var.container_version}
 
 configMapGenerator:
 - name: tezos-configmap

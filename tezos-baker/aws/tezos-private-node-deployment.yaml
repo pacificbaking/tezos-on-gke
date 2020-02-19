@@ -202,6 +202,27 @@ spec:
         volumeMounts:
         - name: tezos-private-node-storage
           mountPath: /var/run/tezos/node
+      - name: tezos-key-importer
+        image: tezos-key-importer
+        env:
+        - name: PROTOCOL_SHORT
+          valueFrom:
+            configMapKeyRef:
+              name: tezos-configmap
+              key: PROTOCOL_SHORT
+        - name: PUBLIC_BAKING_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: tezos-configmap
+              key: PUBLIC_BAKING_KEY
+        volumeMounts:
+        - name: tezos-private-node-storage
+          mountPath: /var/run/tezos/node
+        - name: tezos-private-client-storage
+          mountPath: /var/run/tezos/client
+        resources:
+          limits:
+            cpu: 0
       volumes:
       - name: tezos-private-client-storage
         persistentVolumeClaim:

@@ -85,4 +85,10 @@ variable "signer_target_random_hostname" {
   default     = "signer"
 }
 
+variable "container_version" {
+  type        = string
+  default     = "latest"
+}
+
+
 
