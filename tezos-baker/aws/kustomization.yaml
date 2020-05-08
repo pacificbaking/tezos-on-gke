@@ -1,0 +1,53 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- tezos-public-node-stateful-set.yaml
+- tezos-private-node-deployment.yaml
+- tezos-remote-signer-forwarder.yaml
+
+imageTags:
+  - name: tezos/tezos
+    newTag: mainnet
+  - name: tezos/tezos-public
+    newName: tezos/tezos
+    newTag: mainnet
+  - name: tezos-baker-with-remote-signer
+    newName: 218259028355.dkr.ecr.us-west-2.amazonaws.com/tezos-baker-with-remote-signer
+    newTag: 1.0.1
+  - name: tezos-endorser-with-remote-signer
+    newName: 218259028355.dkr.ecr.us-west-2.amazonaws.com/tezos-endorser-with-remote-signer
+    newTag: 1.0.1
+  - name: tezos-remote-signer-forwarder
+    newName: 218259028355.dkr.ecr.us-west-2.amazonaws.com/tezos-remote-signer-forwarder
+    newTag: 1.0.1
+  - name: tezos-remote-signer-loadbalancer
+    newName: 218259028355.dkr.ecr.us-west-2.amazonaws.com/tezos-remote-signer-loadbalancer
+    newTag: 1.0.1
+  - name: tezos-snapshot-downloader
+    newName: 218259028355.dkr.ecr.us-west-2.amazonaws.com/tezos-snapshot-downloader
+    newTag: 1.0.1
+  - name: tezos-archive-downloader
+    newName: 218259028355.dkr.ecr.us-west-2.amazonaws.com/tezos-archive-downloader
+    newTag: 1.0.1
+  - name: tezos-key-importer
+    newName: 218259028355.dkr.ecr.us-west-2.amazonaws.com/tezos-key-importer
+    newTag: 1.0.1
+  - name: tezos-private-node-connectivity-checker
+    newName: 218259028355.dkr.ecr.us-west-2.amazonaws.com/tezos-private-node-connectivity-checker
+    newTag: 1.0.1
+
+configMapGenerator:
+- name: tezos-configmap
+  literals:
+  - ROLLING_SNAPSHOT_URL="https://tezsnapshots.s3.amazonaws.com/BLLkH7kvQV1XUE9x93qtJV9A9ZmvcZ2LUzaSWjdTX8pXr2kZAVL.rolling"
+  - FULL_SNAPSHOT_URL="https://tezsnapshots.s3.amazonaws.com/BLLkH7kvQV1XUE9x93qtJV9A9ZmvcZ2LUzaSWjdTX8pXr2kZAVL.full"
+  - PUBLIC_BAKING_KEY="tz1LkJJMmK4PtTWs7F2KLCUwb9ivsTndWpuY"
+  - NODE_HOST="localhost"
+  - PROTOCOL="005-PsBabyM1"
+  - PROTOCOL_SHORT="PsBabyM1"
+  - DATA_DIR=/var/run/tezos
+- name: remote-signer-forwarder-configmap
+  literals:
+  - AUTHORIZED_SIGNER_KEY_A="tz1LkJJMmK4PtTWs7F2KLCUwb9ivsTndWpuY"
+  - AUTHORIZED_SIGNER_KEY_B="tz1LkJJMmK4PtTWs7F2KLCUwb9ivsTndWpuY"
